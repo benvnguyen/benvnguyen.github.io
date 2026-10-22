@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="only light">
+  <title>Ben V. Nguyen — Photographs</title>
+  <meta name="description" content="Photographs by Ben V. Nguyen.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Libre+Franklin:ital,wght@0,400;0,500;0,700;0,800;1,400&display=swap">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="page-work">
+  <a class="skip" href="#works">Skip to photographs</a>
+
+  <!-- Pinned to the top of the window the whole way down: just the name on
+       the opening screen; Work and About fade in as the grid arrives. -->
+  <header class="site-header">
+    <nav class="site-nav" aria-label="Primary">
+      <a class="wordmark" href="index.html">Ben V. Nguyen</a>
+      <span class="site-nav__links">
+        <a class="site-nav__side" href="index.html" aria-current="page">Work</a>
+        <a class="site-nav__side" href="about.html">About</a>
+      </span>
+    </nav>
+  </header>
+
+  <!-- The opening screen.
+       data-opening="print": one small print that grows as you scroll.
+       data-opening="name":  your name, nothing else.
+       To compare without editing, add ?opening=print or ?opening=name
+       to the address. -->
+  <div class="opening" data-opening="print">
+    <h1 class="opening__name">Ben Nguyen</h1>
+    <button class="opening__print" type="button" aria-haspopup="dialog" aria-label="View the first photograph"></button>
+  </div>
+  <div class="runway" aria-hidden="true"></div>
+
+  <!-- The viewing room: one screen tall, sliding up over the opening and
+       stopping just below the header; the prints scroll inside it. -->
+  <div class="paper" id="works">
+    <main class="gallery" id="main" data-gallery aria-label="Photographs">
+      <ol class="works" data-works></ol>
+
+      <footer class="site-footer">
+        <p>&copy; 2026 Ben V. Nguyen</p>
+      </footer>
+    </main>
+  </div>
+
+  <dialog class="viewer" data-viewer aria-label="Photograph viewer">
+    <div class="viewer__bar">
+      <p class="viewer__count" data-viewer-count aria-live="polite"></p>
+      <button class="text-button" type="button" data-viewer-close>Close</button>
+    </div>
+
+    <div class="viewer__stage" data-viewer-stage></div>
+
+    <div class="viewer__foot">
+      <div class="label" data-viewer-label></div>
+      <div class="viewer__nav">
+        <button class="text-button" type="button" data-viewer-prev>Previous</button>
+        <button class="text-button" type="button" data-viewer-next>Next</button>
+      </div>
+    </div>
+  </dialog>
+
+  <script src="js/photos.js"></script>
+  <script src="js/gallery.js"></script>
+</body>
+</html>

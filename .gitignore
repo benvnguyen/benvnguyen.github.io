@@ -1,0 +1,7 @@
+# Full-size originals stay on this computer; only the web copies that
+# tools/prepare_photos.py makes in images/web/ are published.
+/images/*
+!/images/web/
+!/images/.gitkeep
+
+__pycache__/
