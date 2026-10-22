@@ -137,6 +137,13 @@
   const print = opening.querySelector(".opening__print");
   const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
 
+  // Phones and tablets (a finger, not a mouse, is the main pointer) get
+  // their own way of moving: see "Touch screens" in style.css, growPrint
+  // and updateRoom below. .is-touch on <html> switches the CSS over.
+  const touchScreen = window.matchMedia("(pointer: coarse)");
+  let touch = touchScreen.matches;
+  document.documentElement.classList.toggle("is-touch", touch);
+
   // ?opening=print or ?opening=name overrides the mode set in index.html.
   const requested = new URLSearchParams(location.search).get("opening");
   if (requested === "print" || requested === "name") opening.dataset.opening = requested;
@@ -176,18 +183,41 @@
   // size before the gallery slides up.
   const GROW = 0.6;
 
-  function growPrint() {
+  // Sizes that only change with the window, worked out once per resize
+  // rather than on every frame of scrolling.
+  let bar = 0;
+  let small = 0;
+  let large = 0;
+
+  function measure() {
     const vw = window.innerWidth;
     const vh = window.innerHeight;
-    const small = vw < 600 ? 96 : 132;
+    bar = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--bar")) || 0;
+    small = vw < 600 ? 96 : 132;
     // 86% of the height left clear of the pinned header (top and bottom, so
     // the print stays centred), at 4:5.
-    const bar = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--bar")) || 0;
-    const large = Math.min((vh - 2 * bar) * 0.86 * 0.8, vw * 0.9);
-    const distance = vh * GROW;
-    const p = reduceMotion.matches ? 0 : Math.min(Math.max(window.scrollY / distance, 0), 1);
+    large = Math.min((vh - 2 * bar) * 0.86 * 0.8, vw * 0.9);
+    // On touch screens the print is laid out once at full size and scaled
+    // down (see growPrint), so its width is fixed here.
+    print.style.width = touch ? `${large}px` : "";
+    print.style.transform = "";
+  }
+
+  function growPrint(scrollY, vh) {
+    const p = reduceMotion.matches ? 0 : Math.min(Math.max(scrollY / (vh * GROW), 0), 1);
     const eased = p * p * (3 - 2 * p);                    // smoothstep: slow, fast, slow
-    print.style.width = `${small + (large - small) * eased}px`;
+    const width = small + (large - small) * eased;
+
+    if (touch) {
+      // Phones: scaling is done by the graphics chip, with no relayout of
+      // the page, so it keeps up with a finger. The edge is drawn thicker by
+      // the same factor so it still looks 1px on screen.
+      const scale = width / large;
+      print.style.transform = `scale(${scale})`;
+      print.style.setProperty("--edge-w", `${1 / scale}px`);
+    } else {
+      print.style.width = `${width}px`;
+    }
     // The caption appears over the last 40% of the growth: invisible while
     // the print is too small to hold it, fully there once it's full size.
     print.style.setProperty("--reveal", Math.min(Math.max((eased - 0.6) / 0.4, 0), 1));
@@ -205,9 +235,10 @@
   const room = document.querySelector("[data-gallery]");
 
   // Keep prints shorter than the room, then pad the grid so the first and
-  // last rows can rest in its centre.
+  // last rows can rest in its centre. On touch screens the grid scrolls with
+  // the page, so "the room" is the window below the header.
   function fitRoom() {
-    const height = room.clientHeight;
+    const height = touch ? window.innerHeight - bar : room.clientHeight;
     grid.style.setProperty("--sheet-max", `${Math.floor((height * 0.88) / 1.25)}px`);  // 88% of the height, at 4:5
     const row = grid.firstElementChild;
     const lead = row ? (height - row.offsetHeight) / 2 : 48;
@@ -217,14 +248,17 @@
   let live = false;
   let swallow = false;         // ignore the rest of the gesture that brought the room in
 
-  function updateRoom() {
-    const end = document.documentElement.scrollHeight - window.innerHeight;
-    const now = window.scrollY >= end - 2;
+  // atEnd: whether the page has scrolled all the way down (read beforehand,
+  // so this only writes). The room never goes live on touch screens: there
+  // the grid is part of the page and the browser's own snapping does the work.
+  function updateRoom(atEnd) {
+    const now = !touch && atEnd;
     if (now && !live) swallow = true;
     live = now;
     room.classList.toggle("is-live", live);
   }
 
+  measure();
   new ResizeObserver(fitRoom).observe(room);
   fitRoom();
 
@@ -385,17 +419,24 @@
 
   // Work, About and the header's hairline fade in once the grid has slid
   // halfway up the screen.
-  function updateHeader() {
-    const arriving = paper.getBoundingClientRect().top < window.innerHeight * 0.5;
+  function updateHeader(arriving) {
     document.body.classList.toggle("in-room", arriving);
   }
 
+  // Once per frame while scrolling. Everything is measured first and only
+  // then changed: measuring after a change forces the browser to lay the
+  // page out again mid-frame, which is what makes scrolling stutter.
   let ticking = false;
   function onScroll() {
     ticking = false;
-    if (printMode) growPrint();
-    updateRoom();
-    updateHeader();
+    const y = window.scrollY;
+    const vh = window.innerHeight;
+    const atEnd = y >= document.documentElement.scrollHeight - vh - 2;
+    const arriving = paper.getBoundingClientRect().top < vh * 0.5;
+
+    updateRoom(atEnd);
+    updateHeader(arriving);
+    if (printMode) growPrint(y, vh);
   }
 
   function requestTick() {
@@ -406,7 +447,18 @@
   }
 
   window.addEventListener("scroll", requestTick, { passive: true });
-  window.addEventListener("resize", requestTick);
+  window.addEventListener("resize", () => {
+    measure();
+    fitRoom();
+    requestTick();
+  });
+  touchScreen.addEventListener("change", () => {
+    touch = touchScreen.matches;
+    document.documentElement.classList.toggle("is-touch", touch);
+    measure();
+    fitRoom();
+    requestTick();
+  });
   onScroll();
 
   /* ------------------------------------------------------------------------
